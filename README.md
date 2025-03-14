@@ -2,7 +2,7 @@
 
 This script models heather age distribution for a dry heath/moorland environment, with or without management (e.g. managed burns). Heather plants age with time, with each plant having a chance at death, which increases with age. 
 
-This model can be used to determine the age distribution of a heather plant community at different time periods, and determine how long the plant community takes to "stabilise". Please refer to the paper (...) for scientific background. 
+This model can be used to determine the age distribution of a heather plant community at different time periods, and determine how long the plant community takes to "stabilise". Please refer to the paper (coming soon) for scientific background. 
 
 There are two models available, heather_dry_model, and heather_dry_ran_model. The first is the main model (used in the paper), that uses a set mortality chance, which increases with age (100% mortality at plant age 44). The second model adds the ability to apply random mortality modifiers (e.g. random catastrophic events), and is available for experimentation.
 
