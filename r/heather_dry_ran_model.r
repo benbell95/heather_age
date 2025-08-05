@@ -17,7 +17,7 @@
 
 ### increased mortality is a multiplier - either random, or increase
 
-heather_dry_ran <- function(plants=1000, m, r=0, years=100, sa=1, random=TRUE, rc=10, ri=TRUE, rm="random", managed=FALSE, ms=10, mf=10, mk=10) {
+heather_dry_ran <- function(plants=1000, m, r=0, years=100, sa=1, random=TRUE, rc=10, ri=TRUE, rm="random", managed=FALSE, ms=10, me, mf=10, mk=10) {
     # Check max mortality value - if lower than 100, repeat max value so length of m = years + 1 (otherwise generates NA values)
     # This does NOT increase mortality chance - change input values if want to do this
     if(max(m) < 100) {
@@ -46,6 +46,10 @@ heather_dry_ran <- function(plants=1000, m, r=0, years=100, sa=1, random=TRUE, r
         m_sgr <- rep(as.numeric(names(m_g)), times=ceiling(length(m_s1) / length(m_g))) |> {\(x) x[1:length(m_s1)]}()
         m_sg <- m_s 
         m_sg[m_s1] <- m_sgr
+        # Management end
+        if(hasArg(me)) {
+            m_s[me:years] <- 0
+        }
     }
     # Copy original mortality (important, as otherwise loop overwrites original when random=TRUE)
     if(random==TRUE) {mr <- m}
