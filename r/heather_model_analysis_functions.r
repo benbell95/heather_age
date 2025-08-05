@@ -76,6 +76,10 @@ stable <- function(x, t=0.90, sp=10) {
     # When do periods occur
     a_cs <- cumsum(rle(a)$lengths)
     a_t <- as.numeric(a_cs[which(rle(a)$values==FALSE)] + 1)
+    # No FALSE means all stable, thus starts at first year
+    if(length(a_t)==0) {
+        a_t <- 1
+    }
     # Get lengths
     a_l <- as.numeric(rle(a)$lengths[which(rle(a)$values==TRUE)])
     # Results
