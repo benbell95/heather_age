@@ -85,7 +85,12 @@ stable <- function(x, t=0.90, sp=10) {
     # Results
     # Check lengths match
     if(length(a_l)!=length(a_t)) {
-        a_t <- a_t[-length(a_t)]
+        # If first year = TRUE, it is not included in a_t, need to check and add it in
+        if(a[1]==TRUE) {
+            a_t <- c(1, a_t)
+        } else {
+            a_t <- a_t[-length(a_t)]
+        }
     }
     mat <- data.frame(year=a_t, length=a_l)
     # Remove years where length is less than sp (stable period)
