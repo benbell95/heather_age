@@ -2,7 +2,7 @@
 
 This script models heather age distribution for a dry heath/moorland environment, with or without management (e.g. managed burns). Heather plants age with time, with each plant having a chance at death, which increases with age. 
 
-This model can be used to determine the age distribution of a heather plant community at different time periods, and determine how long the plant community takes to "stabilise". Please refer to the paper (coming soon) for scientific background. 
+This model can be used to determine the age distribution of a heather plant community at different time periods, and determine how long the plant community takes to "stabilise". Please refer to the paper (...) for scientific background. 
 
 There are two models available, heather_dry_model, and heather_dry_ran_model. The first is the main model (used in the paper), that uses a set mortality chance, which increases with age (100% mortality at plant age 44). The second model adds the ability to apply random mortality modifiers (e.g. random catastrophic events), and is available for experimentation.
 
@@ -20,6 +20,8 @@ source("https://raw.githubusercontent.com/benbell95/heather_age/r/heather_dry_mo
 ```
 
 Heather plant mortality data is also available in the .csv file "exp_mortality.csv" which you can download and add to your project folder.
+
+Alternatively, download the code for a local copy.
 
 ## Example
 
@@ -42,7 +44,7 @@ Example scenario 2: Simulate the age of 100 heather plants for 100 years, where 
 sim2 <- heather_dry(plants=100, m=rmo, r=-4, years=100, managed=TRUE, ms=10, mf=10, mk=10)
 ```
 
-Details of each argument (and additional available arguments) are available in the code.
+Details of each argument (and additional available arguments) are available in the code file.
 
 The results matrix by itself is not that useful, it is the "raw" model output, but you can use this data to generate useful stats.
 
@@ -77,9 +79,9 @@ The plot shows mean age of the heather plant community and how this changes chan
 
 ### "Stability" period analysis
 
-While the basic stats show changes over time, we also want to know when the age distribution reaches "stability" - that is, when there is no longer variance in the plant age distribution from year to year.
+While the basic stats show changes over time, we also want to know when the age distribution reaches "stability" - that is, when there is no longer large variance in the plant age distribution from year to year.
 
-For this, we use the Wilcoxon rank sum test, and compare one year to the next and look at the p values for significant results. Since this is actually a test of variability, a significant p value (typically < 0.05) would suggest that the age distribution of the compared years (lets say year 1 and year 2) varies and are not "stable". Therefore, we are actually interested in non-significant p values, and in this example, we set that threshold at < 0.9. Additionally, a "stable period" is defined when 10 or more consecutive years have p values that are not significant. 
+For this, we use the Wilcoxon rank sum test, and compare the "final" age distribution (calculated as the mean of the final 10 years of the model run) to each year in the model run, looking at the p values for significant results. Since this is actually a test of variability, a significant p value (typically < 0.05) would suggest that the age distribution of the compared years (e.g. "final" years and year 1) varies and are not "stable". Therefore, we are actually interested in non-significant p values, and in this example, we set that threshold at < 0.9. Additionally, a "stable period" is defined when 10 or more consecutive years have p values that are not significant. 
 
 To run the analysis, the raw model output data needs to be reformatted to work with the base r wilcox.test() function. 
 
@@ -98,7 +100,7 @@ sim1r <- simdf(sim1, stack=FALSE)
 sim2r <- simdf(sim2, stack=FALSE)
 ```
 
-Next, we'll run the Wilcoxon rank sum test to compare year to year variability, extract the p values, and adjust them.
+Next, we'll run the Wilcoxon rank sum test to compare "final" year age distribution to each year, to check for variability, extract the p values, and adjust them. Adjusting the p values is important to reduce false positives since we are running many tests.
 
 ```
 # Wilcoxon rank sum test
@@ -250,8 +252,3 @@ mean(stable_a, na.rm=TRUE)
 mean(stable1_a, na.rm=TRUE)
 mean(stable1len_a, na.rm=TRUE)
 ```
-
-
-
-
-
