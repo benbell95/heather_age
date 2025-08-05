@@ -21,15 +21,16 @@
 # m = Mortality % - should be simple numeric vector, e.g. (1:10, for 1 % chance at plant age 1, and 10% chance at plant age 10)
 # r = Reset age of plant to this value on death (can be negative value for lag time)
 # years = How many years to simulate
-# sa = Start age of plants - the age of the plants for the first run (default 1)
+# sa = Start age of plants - the age of the plants for the first run (default 1). This can also be a vector of ages, for example, to start the scenario with a community of plants with a typical age distribution.
 # managed (optional) = if plants are managed, set to true, and set following arguments:
 # ms = Management start year (i.e. start at year 10)
+# me = Management end year. Optional, leave blank for management to carry on indefinitely.
 # mf = Management frequency (How often does management occur)
 # mk = Percentage of plants to kill (reset age)
 # write = logical - whether to write the output to a csv
 # fn = file name if write=TRUE - include system path
 
-heather_dry <- function(plants=1000, m, r=0, years=100, sa=1, managed=FALSE, ms=10, mf=10, mk=10, write=FALSE, fn) {
+heather_dry <- function(plants=1000, m, r=0, years=100, sa=1, managed=FALSE, ms=10, me, mf=10, mk=10, write=FALSE, fn) {
     # Check max mortality value - if lower than 100, repeat max value so length of m = years + 1 (otherwise generates NA values)
     # This does NOT increase mortality chance - change input values if want to do this
     if(max(m) < 100) {
@@ -48,7 +49,7 @@ heather_dry <- function(plants=1000, m, r=0, years=100, sa=1, managed=FALSE, ms=
         # sequence needs to match length of years
         # fill gaps with 0s
         m_s <- rep(0, times=years)
-        m_s[m_s1] <- m_s1 
+        m_s[m_s1] <- m_s1
         # Convert mk (kill percentage) into number of groups
         mkg <- plants / (mk / 100 * plants)
         # Create groups for plants to kill (reset age)
@@ -57,6 +58,10 @@ heather_dry <- function(plants=1000, m, r=0, years=100, sa=1, managed=FALSE, ms=
         m_sgr <- rep(as.numeric(names(m_g)), times=ceiling(length(m_s1) / length(m_g))) |> {\(x) x[1:length(m_s1)]}()
         m_sg <- m_s 
         m_sg[m_s1] <- m_sgr
+        # Management end
+        if(hasArg(me)) {
+            m_s[me:years] <- 0
+        }
     }
     ### Loop
     for(i in 1:years) {
