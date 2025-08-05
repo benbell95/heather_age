@@ -13,7 +13,7 @@
 
 ### Analysis
 # Function to reformat data for ANOVA/non-parametric testing (Wilcoxon rank sum test)
-simdf <- function(x, reorder=TRUE, stack=TRUE) {
+simdf <- function(x, stack=TRUE) {
     # Get no. years
     y <- nrow(x)
     # Transpose
@@ -22,16 +22,49 @@ simdf <- function(x, reorder=TRUE, stack=TRUE) {
     setnames(x, as.character(1:y))
     # convert values below 1 to NA (dead plants)
     for(col in names(x)) set(x, i=which(x[[col]] < 1), j=col, value=NA)
-    # Re-order columns - put final year first for multiple comparison testing
-    if(reorder==TRUE) {
-        setcolorder(x, c(y, 1:(y-1)))
-    }
     # Stack
     if(stack==TRUE) {
         x <- melt(x, measure.vars=1:y, variable.name="year", value.name="plant_age")
     }
     return(x)
 }
+
+### Function to calculate adjusted p value using Wilcox test on a stacked data.table
+# cny = Distribution is compared to how many "final" years (default = 10, i.e. last 10 years)
+# pa = P adjustment method, see ?p.adjust for options
+# future = use parallel processing or not
+# write = logical. write data, or return as object
+# fn = to write data.
+# Data is technically "independent" - since the values are only dependent on the previous year
+# If comparing year to year, use a paired test
+
+wctp <- function(x, cny=10, pair=FALSE, pa="BY", future=FALSE, write=FALSE, fn) {
+    # number of years (get number of levels)
+    l <- x[, nlevels(year)]
+    # Years to compare distribution to
+    cy <- (l-cny):l
+    # Calculate p
+    if(future==TRUE) {
+        r <- future_lapply(1:l, \(y) wilcox.test(x[year %in% cy, plant_age], x[year==y, plant_age], paired=pair)$p.value)
+    } else {
+        # store
+        r <- vector("numeric", l)
+        # loop - get p values
+        # loop is just as fast as lapply :)
+        for(i in 1:l) {
+            r[i] <- wilcox.test(x[year %in% cy, plant_age], x[year==i, plant_age], paired=pair)$p.value
+        } 
+    }
+    # Adjust p
+    r <- p.adjust(r, pa)
+    # Write data?
+    if(write==TRUE) {
+        write.csv(r, fn)
+    } else {
+        return(r)
+    }
+}
+
 
 ### Function to find stable periods
 # x should be vector of p values
@@ -45,9 +78,11 @@ stable <- function(x, t=0.90, sp=10) {
     a_t <- as.numeric(a_cs[which(rle(a)$values==FALSE)] + 1)
     # Get lengths
     a_l <- as.numeric(rle(a)$lengths[which(rle(a)$values==TRUE)])
-    # Need to add 1 year to final length (to account for final year)
-    a_l[length(a_l)] <- a_l[length(a_l)] + 1
-    # Results as matrix
+    # Results
+    # Check lengths match
+    if(length(a_l)!=length(a_t)) {
+        a_t <- a_t[-length(a_t)]
+    }
     mat <- data.frame(year=a_t, length=a_l)
     # Remove years where length is less than sp (stable period)
     # But check to see if any match first!
@@ -102,23 +137,22 @@ sim_stats <- function(m, m_fy, med, med_fy, d, sp, sp1, sp1len) {
 
 #######################################
 ### Plot - compare boxplot and p values
+# Works with stacked data.table
 plot_stable <- function(ad, p, sp, t=0.9, main="") {
-    # number of years
-    years <- ncol(ad)
-    # Re-order columns
-    rec <- c(2:years, 1)
+    # number of years (get number of levels)
+    years <- ad[, nlevels(year)]
     # age range
-    ar <- range(ad, na.rm=TRUE)
+    ar <- range(ad[, plant_age], na.rm=TRUE)
     # x labels
     xl <- seq(0, years, 10)
     # dead plants
-    dp <- lapply(ad[, ..rec], function(x) sum(is.na(x))) |> unlist()
+    dp <- lapply(1:years, \(x)  sum(is.na(ad[year==x, plant_age]))) |> unlist()
     dpm <- mean(dp)
     # Mean plant age
-    mp <- lapply(ad[, ..rec], function(x) mean(x, na.rm=TRUE)) |> unlist()
+    mp <- lapply(1:years, \(x)  mean(ad[year==x, plant_age], na.rm=TRUE)) |> unlist()
     mpm <- mean(mp)
     # Median age at final year (final year is first year)
-    ym <- median(ad[[1]], na.rm=TRUE)
+    ym <- median(ad[year==years, plant_age], na.rm=TRUE)
     #########################################################
     ### Plot layout
     layout(matrix(c(4,4,2,3,1,1), ncol=1))
@@ -181,7 +215,7 @@ plot_stable <- function(ad, p, sp, t=0.9, main="") {
     plot(1:years, xlim=c(0, years+1), ylim=ar, type="n", xaxs="i", axes=FALSE, ann=FALSE)
     # Boxplot
     # Add boxplot
-    boxplot(ad[, ..rec], at=1:years, col=adjustcolor("grey50", 0.5), add=TRUE, axes=FALSE, ann=FALSE) 
+    boxplot(ad[, plant_age ~ year], at=1:years, col=adjustcolor("grey50", 0.5), add=TRUE, axes=FALSE, ann=FALSE) 
     # Median final year
     abline(h=ym, col=adjustcolor("blue", 0.75), lwd=3, lty=2) 
     text(x=years-15, y=-0.5, labels=paste0("Median age at year ", years, ": ", ym), col="blue", cex=2, xpd=NA)
@@ -196,6 +230,7 @@ plot_stable <- function(ad, p, sp, t=0.9, main="") {
     ### Plot title 
     title(main=main, outer=TRUE, line=3.5, cex.main=3)
 }
+
 
 
 ### Generate stats
