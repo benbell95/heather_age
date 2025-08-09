@@ -165,19 +165,6 @@ sim2_sp <- stable(sim2_wt_pa)
 
 The results will show the year which the "stable" period starts, and how long it lasts. There may be multiple stable periods.
 
-You can then plot the simulation using the helper functions.
-
-```
-# Plot simulations/stable period
-pdf("sim1_stable_plot.pdf", width=24, height=18)
-plot_stable(ad=sim1r, p=sim1_wt_pa, sp=sim1_sp, t=0.9)
-dev.off()
-
-pdf("sim2_stable_plot.pdf", width=24, height=18)
-plot_stable(ad=sim2r, p=sim2_wt_pa, sp=sim2_sp, t=0.9)
-dev.off()
-```
-
 ## Parallel processing
 
 The two examples run very fast since they are only simulating a small number of plants and years.
