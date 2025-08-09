@@ -131,7 +131,7 @@ stable <- function(x, pd="d", t=0.90, sp=10) {
 
 
 ### Stable period plot
-# d = mean stats d data (from ks test)
+# d = d values (from ks test)
 # sp = stable period (from stable function)
 # sp_sd = stable period std dev, plotted as diagonal shading. (optional)
 # m = management period (start, end) (optional)
@@ -149,7 +149,7 @@ stable <- function(x, pd="d", t=0.90, sp=10) {
 
 plot_stable <- function(d, sp, sp_sd, m, y=300, xa=TRUE, xlabs=TRUE, ya1=TRUE, ya2=TRUE, cols="#44AA99", colm="#d88a97", cole="#ddcc77", ...) {
     # Empty plot
-    plot(d[,2], type="n", ylim=c(0, 1), xaxs="i", ann=FALSE, axes=FALSE, ...)
+    plot(d, type="n", ylim=c(0, 1), xaxs="i", ann=FALSE, axes=FALSE, ...)
     pu <- par("usr")
     # Plot time periods
     if(hasArg(m)) { e <- m[2] } else { e <- 1}

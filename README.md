@@ -16,7 +16,7 @@ You can load the model code directly into R from Github using the following:
 
 ```
 # Load model code
-source("https://raw.githubusercontent.com/benbell95/heather_age/r/heather_dry_model.r")
+source("https://raw.githubusercontent.com/benbell95/heather_age/refs/heads/main/r/heather_dry_model.r")
 ```
 
 Heather plant mortality data is also available in the .csv file "exp_mortality.csv" which you can download and add to your project folder.
@@ -56,7 +56,7 @@ Several "helper" functions are available which allow you to generate meaningful 
 
 ```
 # Load model code
-source("https://raw.githubusercontent.com/benbell95/heather_age/r/heather_model_analysis_functions.r")
+source("https://raw.githubusercontent.com/benbell95/heather_age/refs/heads/main/r/heather_model_analysis_functions.r")
 ```
 
 For example, to generate some quick descriptive stats and plot the results, you can use the following code:
@@ -77,15 +77,19 @@ For example, in sim1, the max and mean age of the heather plants is 41 and 11.6 
 
 The plot shows mean age of the heather plant community and how this changes changes for each year simulated. 
 
-### "Stability" period analysis
+### "Stable distribution" analysis
 
-While the basic stats show changes over time, we also want to know when the age distribution reaches "stability" - that is, when there is no longer large variance in the plant age distribution from year to year.
+While the basic stats show changes over time, we also want to know when the age distribution reaches "stability" - that is, when the plant age distribution has very high similarity from year to year.
 
-For this, we use the Wilcoxon rank sum test, and compare the "final" age distribution (calculated as the mean of the final 10 years of the model run) to each year in the model run, looking at the p values for significant results. Since this is actually a test of variability, a significant p value (typically < 0.05) would suggest that the age distribution of the compared years (e.g. "final" years and year 1) varies and are not "stable". Therefore, we are actually interested in non-significant p values, and in this example, we set that threshold at < 0.9. Additionally, a "stable period" is defined when 10 or more consecutive years have p values that are not significant. 
+For this, we use the [Kolmogorov-Smirnov test](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) to assess the age distribution of each year in the model run, which is compared to the "final age distribution", calculated as the mean of the final 10 years of the model run. This produces the Kolmogorov's D statistic, a value between 0 and 1, with values close to 0 meaning high similarity, and values close to 1 meaning low similarity in the age distribution. The test also produces a p value, with significant p values (typically < 0.05) indicating significant differences in the distribution. 
 
-To run the analysis, the raw model output data needs to be reformatted to work with the base r wilcox.test() function. 
+The analysis is run within the scenario - therefore, to produce a "natural" age distribution, the model should be run for at least 100 years without any management occurring. The final years age distribution could then be considered as the "stable natural" age distribution. If management occurs for the duration of the model run, the age distribution will also become stable (resulting in low D statistic like the non-management scenario), but this should be considered as a "stable management" age distribution, rather than a natural one. 
 
-The helper functions are designed to work with data.tables (since typically you might simulate thousands of plants or years), therefore it is necessary to convert the model output data first, before using the simdf() function to reformat the data.
+Alternatively, you could compare the age distribution of any model scenario to a pre-defined age distribution of your choosing.
+
+To run the analysis, we will use the base r ks.test() function. 
+
+The helper functions are designed to work with data.tables (since typically you might simulate thousands of plants or years), therefore it is necessary to convert the model output data first.
 
 ```
 # Load data.table library 
@@ -94,29 +98,64 @@ library("data.table")
 # Convert to data.table
 sim1 <- as.data.table(sim1)
 sim2 <- as.data.table(sim2)
-
-# Reformat data
-sim1r <- simdf(sim1, stack=FALSE)
-sim2r <- simdf(sim2, stack=FALSE)
 ```
 
-Next, we'll run the Wilcoxon rank sum test to compare "final" year age distribution to each year, to check for variability, extract the p values, and adjust them. Adjusting the p values is important to reduce false positives since we are running many tests.
+Next we'll run the test on each and every year of the model run, comparing to the final 10 year's age distribution.
 
 ```
-# Wilcoxon rank sum test
-sim1_wt <- lapply(sim1r[,-1], function(x) wilcox.test(sim1r[[1]], x))
-sim2_wt <- lapply(sim2r[,-1], function(x) wilcox.test(sim2r[[1]], x))
+# Run ks tests
+years <- 100
+sim1_ks <- lapply(1:years, \(y) ks.test(unlist(sim1[91:100,]), unlist(sim1[y,])))
+sim2_ks <- lapply(1:years, \(y) ks.test(unlist(sim2[91:100,]), unlist(sim2[y,])))
+```
 
-# Get p values
-sim1_wt_p <- lapply(sim1_wt, function(x) x$p.value) |> unlist()
-sim2_wt_p <- lapply(sim2_wt, function(x) x$p.value) |> unlist()
+Then, we'll extract the D and P values, which we can use to assess the similarity of the age distributions.
 
+```
+# Extract D values
+sim1_ks_d <- lapply(sim1_ks, "[", 1) |> unlist() |> unname()
+sim2_ks_d <- lapply(sim2_ks, "[", 1) |> unlist() |> unname()
+
+# Extract P values
+sim1_ks_p <- lapply(sim1_ks, "[", 2) |> unlist() |> unname()
+sim2_ks_p <- lapply(sim2_ks, "[", 2) |> unlist() |> unname()
+```
+
+For the p values, since we have run multiple tests, you should adjust these values to avoid false positives.
+
+```
 # Adjust p values
-sim1_wt_pa <- p.adjust(sim1_wt_p, "BY")
-sim2_wt_pa <- p.adjust(sim2_wt_p, "BY")
+sim1_ks_pa <- p.adjust(sim1_ks_p, method="BY")
+sim2_ks_pa <- p.adjust(sim2_ks_p, method="BY")
 ```
 
-Next, we'll calculate the stable periods using the helper function.
+You can create a quick plot to take a look at the results.
+
+```
+plot(sim1_ks_d, type="o", ylim=c(0, 1), xlab="Year")
+lines(sim1_ks_pa, col="red")
+```
+
+On the plot, you will see that near the beginning of the model run, D values are high, while p values are low. As time progresses, this relationship is reversed, with lower D values indicating more similar age distributions.
+
+Since in this example we are only looking at 100 plants, and we've only run the model once, the values are not particularly smooth - ideally, you would simulate thousands of plant ages and repeat the model several times.
+
+You can compare these results to the second scenario.
+
+You could also take a look at the actual distributions by plotting a histogram or density plot of the ages from the raw model output. For example, to compare the first 10 years and the last 10 years:
+
+```
+# Compare age distributions
+layout(matrix(1:2, ncol=2))
+hist(sim1[1:10,] |> unlist(), freq=FALSE)
+hist(sim1[91:100,] |> unlist(), freq=FALSE)
+```
+
+The analysis so far gives a good indication that the age distributions differ, but we can define the "stable" period more clearly using one of the helper functions. The function uses the Kolmogorov D statistic to define the stable period, based on a threshold value that you set.
+
+We'll use the mean D statistic for the last 10 years of the model run, plus 0.1. For a model run which uses thousands of plants and is run multiple times, you'll want to use a lower value (typically 0.015).
+
+First, calculate the mean D statistic, then run the stable function.
 
 ```
 # Stable period
@@ -124,7 +163,7 @@ sim1_sp <- stable(sim1_wt_pa)
 sim2_sp <- stable(sim2_wt_pa)
 ```
 
-Looking at the results, a single stable period was found in "sim1", which started at year 37, and lasted for 64 years. In "sim2", there were three stable periods, the first starting at year 9, lasting 26 years, the second in year 36 lasting 19 years, and the third starting in year 58 for 43 years. (Your results will vary)
+The results will show the year which the "stable" period starts, and how long it lasts. There may be multiple stable periods.
 
 You can then plot the simulation using the helper functions.
 
@@ -194,61 +233,4 @@ sims <- lapply(fl, function(x) fread(paste0(ds, run, x), drop=1, skip=1))
 names(sims) <- fl
 ```
 
-The result is a list of raw model output data as data.table objects. You can now run the analysis (as previous) on this data, by using lapply() and future_lapply().
-
-```
-# Reformat data
-sims_r <- lapply(sims, function(x) simdf(x, stack=FALSE))
-# Wilcoxon rank sum test
-sims_wt <- future_lapply(sims_r, function(x) lapply(x[,-1], function(x2) wilcox.test(x[,1], x2)))
-# Get p values
-sims_wt_p <- lapply(sims_wt, function(x) unlist(lapply(x, function(x2) unlist(x2$p.value))))
-# Adjust p values
-sims_wt_pa <- lapply(sims_wt_p, function(x) p.adjust(x, "BY"))
-# Stable period
-sims_sp <- lapply(sims_wt_pa, function(x) stable(x))
-```
-
-You can also plot the results of individual simulations as per previous example.
-
-### Statistics of all simulations
-
-Having run the simulation multiple times, you will likely want to know some average stats across all of these simulations. For example, the mean age of the heather plants in the final year of each simulation run.
-
-```
-# Mean age at final year (column 1 in formatted data)
-mean_fy <- lapply(sims_r, function(x) mean(x[[1]], na.rm=TRUE)) |> unlist() |> unname()
-
-# Overall mean
-mean(mean_fy, na.rm=TRUE)
-# Standard deviation
-sd(mean_fy, na.rm=TRUE)
-```
-
-Or you might want to know the mean age of the heather plants for every year of each simulation run.
-
-```
-# Every year, every sim
-mean_ev <- future_lapply(sims_r, function(x) lapply(x, function(x) mean(x, na.rm=TRUE))) 
-
-# Each sim average
-mean_a <- lapply(mean_ev, function(x) mean(unlist(x), na.rm=TRUE)) |> unlist() |> unname() 
-```
-
-If you want information about the stable periods for each simulation
-
-```
-# Stable periods
-stable_a <- lapply(sims_sp, function(x) nrow(x)) |> unlist() |> unname() 
-
-# Which year does the first stable period occur
-stable1_a <- lapply(sims_sp, function(x) x$year[1]) |> unlist() |> unname() 
-
-# How long is the first stable period
-stable1len_a <- lapply(sims_sp, function(x) x$length[1]) |> unlist() |> unname() 
-
-# Overall mean
-mean(stable_a, na.rm=TRUE)
-mean(stable1_a, na.rm=TRUE)
-mean(stable1len_a, na.rm=TRUE)
-```
+The result is a list of raw model output data as data.table objects. You can now run the analysis as per previous examples on this data, by using lapply() and future_lapply().
