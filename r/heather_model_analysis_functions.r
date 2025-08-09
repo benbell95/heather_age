@@ -147,7 +147,7 @@ stable <- function(x, pd="d", t=0.90, sp=10) {
 
 # Colorblind space colours = cols="#44AA99", colm="#d88a97", cole="#ddcc77"
 
-plot_stable <- function(d, sp, sp_sd, m, y=300, xa=TRUE, xlabs=TRUE, ya1=TRUE, ya2=TRUE, cols="#44AA99", colm="#d88a97", cole="#ddcc77", ...) {
+plot_stable <- function(d, sp, sp_sd=0, m, y=300, xa=TRUE, xlabs=TRUE, ya1=TRUE, ya2=TRUE, cols="#44AA99", colm="#d88a97", cole="#ddcc77", ...) {
     # Empty plot
     plot(d, type="n", ylim=c(0, 1), xaxs="i", ann=FALSE, axes=FALSE, ...)
     pu <- par("usr")
